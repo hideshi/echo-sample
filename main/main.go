@@ -11,11 +11,13 @@ import (
 )
 
 func main() {
-	// Create tables
-	models.InitDB()
-
 	// Create app
 	e := echo.New()
+
+	// Create tables
+	if _, err := models.InitDB(); err != nil {
+		e.Logger.Fatal(err)
+	}
 
 	// Load config
 	if _, err := toml.DecodeFile("config/config.toml", &structs.Conf); err != nil {

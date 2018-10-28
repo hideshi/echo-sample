@@ -70,12 +70,12 @@ func CreateUser(email string, password string, activationKey string, expirationO
 
 	stmt, err := db.Prepare(`
 		INSERT INTO users (
-			email,
-			password,
-			activated,
-			activation_key,
-			expiration_of_activation_key
-			) VALUES (?, ?, 0, ?, ?)
+		email,
+		password,
+		activated,
+		activation_key,
+		expiration_of_activation_key
+		) VALUES (?, ?, 0, ?, ?)
 		`)
 	defer stmt.Close()
 	if err != nil {
@@ -105,7 +105,7 @@ func ActivateUser(activationKey string, unixtime string) (sql.Result, error) {
 	}
 
 	stmt, err := db.Prepare(`
-	UPDATE users
+		UPDATE users
 		SET activated = 1
 		WHERE activation_key = ?
 		AND expiration_of_activation_key >= ?
