@@ -1,7 +1,5 @@
 package structs
 
-var Conf Config
-
 // Config struct
 type Config struct {
 	Auth        AuthConfig
