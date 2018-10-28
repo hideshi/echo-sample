@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/BurntSushi/toml"
 	"github.com/hideshi/echo-sample/controllers"
 	"github.com/hideshi/echo-sample/models"
@@ -23,8 +21,6 @@ func main() {
 	if _, err := toml.DecodeFile("config/config.toml", &structs.Conf); err != nil {
 		e.Logger.Fatal(err)
 	}
-
-	fmt.Println(structs.Conf)
 
 	// Middleware
 	e.Use(middleware.Logger())

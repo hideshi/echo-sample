@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,48 +14,31 @@ import (
 )
 
 func CreateUser(c echo.Context) error {
-	db := models.CreateConnection()
-	defer db.Close()
-	h := sha256.New()
-
-	unixtime := utils.GetCurrentUnixTime()
-
-	h.Write([]byte(c.FormValue("email") + c.FormValue("password") + structs.Conf.Auth.ActivationSalt + unixtime))
-	activationKey := fmt.Sprintf("%x", h.Sum(nil))
-	stmt, err := db.Prepare(`
-		INSERT INTO users (
-			email,
-			password,
-			activated,
-			activation_key,
-			expiration_of_activation_key
-			) VALUES (?, ?, 0, ?, ?)
-		`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
-
-	res, err := stmt.Exec(
-		c.FormValue("email"),
-		c.FormValue("password"),
+	email := c.FormValue("email")
+	password := c.FormValue("password")
+	activationKey := utils.GenerateActivationKey(email, password, structs.Conf.Auth.ActivationSalt)
+	expirationOfActivationKey := utils.GetExpirationOfActivationKey(structs.Conf.Auth.ExpirationOfActivationKey)
+	lastIntertedID, err := models.CreateUser(
+		email,
+		password,
 		activationKey,
-		utils.GetExpirationOfActivationKey(),
+		expirationOfActivationKey,
 	)
 	if err != nil {
 		log.Fatal(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	lastIntertedID, err := res.LastInsertId()
-
+	fmt.Println(lastIntertedID)
 	user, err := models.FindUser(lastIntertedID)
 	if err != nil {
 		log.Fatal(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
-
+	fmt.Println(user)
 	err = sendActivationMail(user)
 	if err != nil {
 		log.Fatal(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, lastIntertedID)
@@ -92,8 +74,14 @@ func sendActivationMail(user structs.User) error {
 }
 
 func ActivateUser(c echo.Context) error {
-	affected, err := models.ActivateUser(c.QueryParam("activation_key"))
-	if err != 0 {
+	unixtime := utils.GetCurrentUnixTime()
+	res, err := models.ActivateUser(c.QueryParam("activation_key"), unixtime)
+	if err != nil {
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
 		return c.NoContent(http.StatusBadRequest)
 	}
 

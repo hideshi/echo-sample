@@ -3,10 +3,8 @@ package models
 import (
 	"database/sql"
 	"log"
-	"net/http"
 
 	"github.com/hideshi/echo-sample/structs"
-	"github.com/hideshi/echo-sample/utils"
 )
 
 func CreateConnection() *sql.DB {
@@ -43,11 +41,42 @@ func FindUser(userID int64) (structs.User, error) {
 	return user, err
 }
 
-func ActivateUser(activationKey string) (int64, int64) {
+func CreateUser(email string, password string, activationKey string, expirationOfActivationKey string) (int64, error) {
 	db := CreateConnection()
 	defer db.Close()
 
-	unixtime := utils.GetCurrentUnixTime()
+	stmt, err := db.Prepare(`
+		INSERT INTO users (
+			email,
+			password,
+			activated,
+			activation_key,
+			expiration_of_activation_key
+			) VALUES (?, ?, 0, ?, ?)
+		`)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(
+		email,
+		password,
+		activationKey,
+		expirationOfActivationKey,
+	)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+
+	return res.LastInsertId()
+}
+
+func ActivateUser(activationKey string, unixtime string) (sql.Result, error) {
+	db := CreateConnection()
+	defer db.Close()
 
 	stmt, err := db.Prepare(`
 	UPDATE users
@@ -57,7 +86,7 @@ func ActivateUser(activationKey string) (int64, int64) {
 	`)
 	if err != nil {
 		log.Fatal(err)
-		return 0, http.StatusInternalServerError
+		return nil, err
 	}
 	defer stmt.Close()
 
@@ -67,13 +96,8 @@ func ActivateUser(activationKey string) (int64, int64) {
 	)
 	if err != nil {
 		log.Fatal(err)
-		return 0, http.StatusInternalServerError
+		return nil, err
 	}
 
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		return 0, http.StatusNotFound
-	}
-
-	return affected, 0
+	return res, nil
 }
