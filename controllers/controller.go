@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -28,13 +27,13 @@ func CreateUser(c echo.Context) error {
 		log.Fatal(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	fmt.Println(lastIntertedID)
-	user, err := models.FindUser(lastIntertedID)
+
+	user, err := models.FindUserByID(lastIntertedID)
 	if err != nil {
 		log.Fatal(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	fmt.Println(user)
+
 	err = sendActivationMail(user)
 	if err != nil {
 		log.Fatal(err)
@@ -51,8 +50,6 @@ func sendActivationMail(user structs.User) error {
 		structs.Conf.GMail.SenderPassword,
 		"smtp.gmail.com",
 	)
-
-	fmt.Println(auth)
 
 	activationLink := `
 	http://localhost:1323/users/activate?activation_key=` + user.ActivationKey
@@ -94,7 +91,7 @@ func GetUser(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	user, err := models.FindUser(userID)
+	user, err := models.FindUserByID(userID)
 	if err != nil {
 		return c.NoContent(http.StatusNotFound)
 	}
