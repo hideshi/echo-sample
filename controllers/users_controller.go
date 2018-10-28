@@ -18,18 +18,12 @@ func CreateUser(c echo.Context) error {
 	password := c.FormValue("password")
 	activationKey := utils.GenerateActivationKey(email, password, structs.Conf.Auth.ActivationSalt)
 	expirationOfActivationKey := utils.GetExpirationOfActivationKey(structs.Conf.Auth.ExpirationOfActivationKey)
-	lastIntertedID, err := models.CreateUser(
+	user, err := models.CreateUser(
 		email,
 		password,
 		activationKey,
 		expirationOfActivationKey,
 	)
-	if err != nil {
-		log.Fatal(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	user, err := models.FindUserByID(lastIntertedID)
 	if err != nil {
 		log.Fatal(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -41,7 +35,7 @@ func CreateUser(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, lastIntertedID)
+	return c.JSON(http.StatusOK, user)
 }
 
 func sendActivationMail(user structs.User) error {
@@ -73,17 +67,12 @@ func sendActivationMail(user structs.User) error {
 
 func ActivateUser(c echo.Context) error {
 	unixtime := utils.GetCurrentUnixTime()
-	res, err := models.ActivateUser(c.QueryParam("activation_key"), unixtime)
+	user, err := models.ActivateUser(c.QueryParam("activation_key"), unixtime)
 	if err != nil {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		return c.NoContent(http.StatusBadRequest)
-	}
-
-	return c.JSON(http.StatusOK, affected)
+	return c.JSON(http.StatusOK, user)
 }
 
 func GetUser(c echo.Context) error {
@@ -92,13 +81,14 @@ func GetUser(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	user, err := models.FindUserByID(userID)
+	user, err := models.FindUserByID(uint64(userID))
 	if err != nil {
 		return c.NoContent(http.StatusNotFound)
 	}
 	return c.JSON(http.StatusOK, user)
 }
 
+/*
 func UpdateEmail(c echo.Context) error {
 	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -113,3 +103,4 @@ func UpdateEmail(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, user)
 }
+*/

@@ -1,20 +1,19 @@
 package models
 
 import (
-	"database/sql"
-	"log"
-
 	"github.com/hideshi/echo-sample/structs"
+	"github.com/jinzhu/gorm"
 )
 
-func CreateConnection() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "sample.db")
+func CreateConnection() (*gorm.DB, error) {
+	db, err := gorm.Open("sqlite3", "sample.db")
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
+/*
 func InitDB() (sql.Result, error) {
 	db, err := CreateConnection()
 	defer db.Close()
@@ -33,102 +32,48 @@ func InitDB() (sql.Result, error) {
 		)
 	`)
 }
-
-func FindUserByID(userID int64) (structs.User, error) {
-	db, err := CreateConnection()
-	defer db.Close()
-	if err != nil {
-		return structs.User{}, err
-	}
-
-	stmt, err := db.Prepare(`SELECT id, email, activated, activation_key FROM users WHERE id = ?`)
-	defer stmt.Close()
-	if err != nil {
-		return structs.User{}, err
-	}
-
-	rows, err := stmt.Query(userID)
+*/
+func FindUserByID(userID uint64) (structs.User, error) {
 	user := structs.User{}
-	for rows.Next() {
-		if err := rows.Scan(&user.ID, &user.Email, &user.Activated, &user.ActivationKey); err != nil {
-			return structs.User{}, err
-		}
+	db, err := CreateConnection()
+	defer db.Close()
+	if err != nil {
+		return user, err
 	}
-	if err := rows.Err(); err != nil {
+	db.First(&user, userID)
+	return user, nil
+}
+
+func CreateUser(email string, password string, activationKey string, expirationOfActivationKey string) (structs.User, error) {
+	db, err := CreateConnection()
+	defer db.Close()
+	if err != nil {
 		return structs.User{}, err
 	}
-
-	return user, err
+	user := structs.User{
+		Email:                     email,
+		Password:                  password,
+		ActivationKey:             activationKey,
+		ExpirationOfActivationKey: expirationOfActivationKey,
+	}
+	db.Create(&user)
+	return user, nil
 }
 
-func CreateUser(email string, password string, activationKey string, expirationOfActivationKey string) (int64, error) {
+func ActivateUser(activationKey string, unixtime string) (structs.User, error) {
+	user := structs.User{}
 	db, err := CreateConnection()
 	defer db.Close()
 	if err != nil {
-		return 0, err
+		return user, err
 	}
+	db.Model(&user).Where("activation_key = ?", activationKey).Where("expiration_of_activation_key >= ?", unixtime).Update("activated", 1)
 
-	stmt, err := db.Prepare(`
-		INSERT INTO users (
-		email,
-		password,
-		activated,
-		activation_key,
-		expiration_of_activation_key
-		) VALUES (?, ?, 0, ?, ?)
-		`)
-	defer stmt.Close()
-	if err != nil {
-		log.Fatal(err)
-		return 0, err
-	}
-
-	res, err := stmt.Exec(
-		email,
-		password,
-		activationKey,
-		expirationOfActivationKey,
-	)
-	if err != nil {
-		log.Fatal(err)
-		return 0, err
-	}
-
-	return res.LastInsertId()
+	return user, nil
 }
 
-func ActivateUser(activationKey string, unixtime string) (sql.Result, error) {
-	db, err := CreateConnection()
-	defer db.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	stmt, err := db.Prepare(`
-		UPDATE users
-		SET activated = 1
-		WHERE activation_key = ?
-		AND expiration_of_activation_key >= ?
-	`)
-	defer stmt.Close()
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-
-	res, err := stmt.Exec(
-		activationKey,
-		unixtime,
-	)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func UpdateEmail(userID int64, email string) (structs.User, error) {
+/*
+func UpdateEmail(userID uint64, email string) (structs.User, error) {
 	db, err := CreateConnection()
 	defer db.Close()
 	if err != nil {
@@ -172,3 +117,4 @@ func UpdateEmail(userID int64, email string) (structs.User, error) {
 
 	return user, nil
 }
+*/

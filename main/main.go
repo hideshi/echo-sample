@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/BurntSushi/toml"
 	"github.com/hideshi/echo-sample/controllers"
-	"github.com/hideshi/echo-sample/models"
 	"github.com/hideshi/echo-sample/structs"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -15,9 +14,11 @@ func main() {
 	e := echo.New()
 
 	// Create tables
-	if _, err := models.InitDB(); err != nil {
-		e.Logger.Fatal(err)
-	}
+	/*
+		if _, err := models.InitDB(); err != nil {
+			e.Logger.Fatal(err)
+		}
+	*/
 
 	// Load config
 	if _, err := toml.DecodeFile("config/config.toml", &structs.Conf); err != nil {
@@ -32,7 +33,7 @@ func main() {
 	e.GET("/users/:id", controllers.GetUser)
 	e.POST("/users", controllers.CreateUser)
 	e.GET("/users/activate", controllers.ActivateUser)
-	e.PATCH("/users/:id", controllers.UpdateEmail)
+	//e.PATCH("/users/:id", controllers.UpdateEmail)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
