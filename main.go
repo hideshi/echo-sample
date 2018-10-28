@@ -12,6 +12,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -23,7 +24,8 @@ type Config struct {
 
 // AuthConfig struct
 type AuthConfig struct {
-	ActivationSalt string
+	ActivationSalt            string
+	ExpirationOfActivationKey int64
 }
 
 // GMailConfig struct
@@ -60,7 +62,8 @@ func initDB() {
             email TEXT NOT NULL,
             password TEXT NOT NULL,
             activated NUMBER NOT NULL,
-            activation_key TEXT NOT NULL
+			activation_key TEXT NOT NULL,
+			expiration_of_activation_key TEXT NOT NULL
         )
     `)
 }
@@ -70,11 +73,19 @@ func createUser(c echo.Context) error {
 	defer db.Close()
 	h := sha256.New()
 
-	unixtime := strconv.Itoa(int(time.Now().Unix()))
+	unixtime := getCurrentUnixTime()
 
 	h.Write([]byte(c.FormValue("email") + c.FormValue("password") + conf.Auth.ActivationSalt + unixtime))
 	activationKey := fmt.Sprintf("%x", h.Sum(nil))
-	stmt, err := db.Prepare(`INSERT INTO users (email, password, activated, activation_key) VALUES (?, ?, 0, ?)`)
+	stmt, err := db.Prepare(`
+		INSERT INTO users (
+			email,
+			password,
+			activated,
+			activation_key,
+			expiration_of_activation_key
+			) VALUES (?, ?, 0, ?, ?)
+		`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,6 +95,7 @@ func createUser(c echo.Context) error {
 		c.FormValue("email"),
 		c.FormValue("password"),
 		activationKey,
+		getExpirationOfActivationKey(),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -112,8 +124,6 @@ func sendActivationMail(user User) error {
 		"smtp.gmail.com",
 	)
 
-	fmt.Println(user)
-
 	activationLink := `
 	http://localhost:1323/users/activate?activation_key=` + user.ActivationKey
 
@@ -136,9 +146,15 @@ func sendActivationMail(user User) error {
 func activateUser(c echo.Context) error {
 	db := createConnection()
 	defer db.Close()
-	fmt.Println(c.QueryParam("activation_key"))
 
-	stmt, err := db.Prepare(`UPDATE users SET activated = 1 WHERE activation_key = ?`)
+	unixtime := getCurrentUnixTime()
+
+	stmt, err := db.Prepare(`
+		UPDATE users
+			SET activated = 1
+			WHERE activation_key = ?
+			AND expiration_of_activation_key >= ?
+		`)
 	if err != nil {
 		log.Fatal(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -147,6 +163,7 @@ func activateUser(c echo.Context) error {
 
 	res, err := stmt.Exec(
 		c.QueryParam("activation_key"),
+		unixtime,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -185,14 +202,34 @@ func findUser(userID int64) (User, error) {
 	return user, err
 }
 
+func getCurrentUnixTime() string {
+	return strconv.Itoa(int(time.Now().Unix()))
+}
+
+func getExpirationOfActivationKey() string {
+	return strconv.Itoa(int(time.Now().Unix() + conf.Auth.ExpirationOfActivationKey))
+}
+
 func main() {
+	// Create tables
 	initDB()
+
+	// Create app
 	e := echo.New()
+
+	// Load config
 	if _, err := toml.DecodeFile("config.toml", &conf); err != nil {
 		e.Logger.Fatal(err)
 	}
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Routes
 	e.GET("/users/:id", getUser)
 	e.POST("/users", createUser)
 	e.GET("/users/activate", activateUser)
+
+	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
 }

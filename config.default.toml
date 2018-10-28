@@ -1,5 +1,6 @@
 [Auth]
 ActivationSalt = "salt string"
+ExpirationOfActivationKey = 86400
 
 [GMail]
 SenderAddress = "gmail address"
