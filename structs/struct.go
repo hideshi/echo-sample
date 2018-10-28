@@ -4,8 +4,9 @@ var Conf Config
 
 // Config struct
 type Config struct {
-	Auth  AuthConfig
-	GMail GMailConfig
+	Auth        AuthConfig
+	GMail       GMailConfig
+	Environment EnvironmentConfig
 }
 
 // AuthConfig struct
@@ -18,6 +19,11 @@ type AuthConfig struct {
 type GMailConfig struct {
 	SenderAddress  string
 	SenderPassword string
+}
+
+// EnvironmentConfig struct
+type EnvironmentConfig struct {
+	Host string
 }
 
 type (

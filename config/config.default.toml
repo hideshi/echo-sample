@@ -5,3 +5,6 @@ ExpirationOfActivationKey = 86400
 [GMail]
 SenderAddress = "gmail address"
 SenderPassword = "password"
+
+[Environment]
+Host = "http://localhost:1323"

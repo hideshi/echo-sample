@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -51,8 +52,8 @@ func sendActivationMail(user structs.User) error {
 		"smtp.gmail.com",
 	)
 
-	activationLink := `
-	http://localhost:1323/users/activate?activation_key=` + user.ActivationKey
+	activationLink := fmt.Sprintf(`
+	%s/users/activate?activation_key=%s`, structs.Conf.Environment.Host, user.ActivationKey)
 
 	err := smtp.SendMail(
 		"smtp.gmail.com:587",
