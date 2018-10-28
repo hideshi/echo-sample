@@ -17,7 +17,13 @@ import (
 
 // Config struct
 type Config struct {
+	Auth  AuthConfig
 	GMail GMailConfig
+}
+
+// AuthConfig struct
+type AuthConfig struct {
+	ActivationSalt string
 }
 
 // GMailConfig struct
@@ -36,9 +42,6 @@ type User struct {
 	Activated     int64  `json:"activated"`
 	ActivationKey string `json:"-" query:"activation_key"`
 }
-
-// ActivationSalt is used to generate activation key
-const ActivationSalt = "echo-sample"
 
 func createConnection() *sql.DB {
 	db, err := sql.Open("sqlite3", "./sample.db")
@@ -69,7 +72,7 @@ func createUser(c echo.Context) error {
 
 	unixtime := strconv.Itoa(int(time.Now().Unix()))
 
-	h.Write([]byte(c.FormValue("email") + c.FormValue("password") + ActivationSalt + unixtime))
+	h.Write([]byte(c.FormValue("email") + c.FormValue("password") + conf.Auth.ActivationSalt + unixtime))
 	activationKey := fmt.Sprintf("%x", h.Sum(nil))
 	stmt, err := db.Prepare(`INSERT INTO users (email, password, activated, activation_key) VALUES (?, ?, 0, ?)`)
 	if err != nil {

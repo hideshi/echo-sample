@@ -1,3 +1,6 @@
+[Auth]
+ActivationSalt = "salt string"
+
 [GMail]
 SenderAddress = "gmail address"
 SenderPassword = "password"
