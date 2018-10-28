@@ -98,3 +98,18 @@ func GetUser(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, user)
 }
+
+func UpdateEmail(c echo.Context) error {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.NoContent(http.StatusBadRequest)
+	}
+	email := c.FormValue("email")
+
+	user, err := models.UpdateEmail(userID, email)
+
+	if err != nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+	return c.JSON(http.StatusOK, user)
+}

@@ -32,6 +32,7 @@ func main() {
 	e.GET("/users/:id", controllers.GetUser)
 	e.POST("/users", controllers.CreateUser)
 	e.GET("/users/activate", controllers.ActivateUser)
+	e.PATCH("/users/:id", controllers.UpdateEmail)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))

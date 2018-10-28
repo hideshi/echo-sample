@@ -127,3 +127,48 @@ func ActivateUser(activationKey string, unixtime string) (sql.Result, error) {
 
 	return res, nil
 }
+
+func UpdateEmail(userID int64, email string) (structs.User, error) {
+	db, err := CreateConnection()
+	defer db.Close()
+	if err != nil {
+		return structs.User{}, err
+	}
+
+	stmt, err := db.Prepare(`
+		UPDATE users
+		SET email = ?
+		WHERE id = ?
+	`)
+	defer stmt.Close()
+	if err != nil {
+		log.Fatal(err)
+		return structs.User{}, err
+	}
+
+	_, err2 := stmt.Exec(email, userID)
+	if err2 != nil {
+		log.Fatal(err)
+		return structs.User{}, err2
+	}
+
+	stmt3, err3 := db.Prepare(`SELECT id, email, activated FROM users WHERE id = ?`)
+	defer stmt3.Close()
+	if err3 != nil {
+		return structs.User{}, err3
+	}
+	rows, err := stmt3.Query(userID)
+
+	user := structs.User{}
+	for rows.Next() {
+		if err := rows.Scan(&user.ID, &user.Email, &user.Activated); err != nil {
+			return structs.User{}, err
+		}
+	}
+	if err != nil {
+		log.Fatal(err)
+		return structs.User{}, err
+	}
+
+	return user, nil
+}
